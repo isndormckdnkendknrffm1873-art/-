@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # يتيح لك تشغيل البناء يدوياً بضغطة زر
+  workflow_dispatch:
 
 jobs:
   build:
@@ -23,8 +23,15 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0' # يمكنك تعديل الإصدار حسب رغبتك
+          flutter-version: '3.19.0'
           channel: 'stable'
+
+      # سطر سحري يقوم بتهيئة بيئة الأندرويد الحديثة برمجياً لتجنب مشكلة الـ v2 embedding
+      - name: Pre-configure Android V2 Embedding
+        run: |
+          mkdir -p android
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          flutter create . --platforms=android --overwrite
 
       - name: Install dependencies
         run: flutter pub get
@@ -37,3 +44,4 @@ jobs:
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          
