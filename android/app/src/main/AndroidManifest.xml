@@ -1,13 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/manifest"
     package="com.example.arch_location_app">
     
-    <!-- الأسطر الحاسمة للسماح للتطبيق بالاتصال بالإنترنت وإرسال الـ IP -->
+    <!-- الصلاحيات الأساسية للسماح للتطبيق بالاتصال بالإنترنت وإرسال البيانات -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
    <application
         android:label="Arch Location App"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"
