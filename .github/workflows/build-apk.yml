@@ -26,12 +26,12 @@ jobs:
           flutter-version: '3.19.0'
           channel: 'stable'
 
-      # سطر سحري يقوم بتهيئة بيئة الأندرويد الحديثة برمجياً لتجنب مشكلة الـ v2 embedding
+      # قمنا بتحديد اسم حقيقي وصحيح هنا لتخطي مشكلة اسم المستودع الإجباري
       - name: Pre-configure Android V2 Embedding
         run: |
           mkdir -p android
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
-          flutter create . --platforms=android --overwrite
+          flutter create . --project-name=arch_location_app --platforms=android --overwrite
 
       - name: Install dependencies
         run: flutter pub get
@@ -44,4 +44,3 @@ jobs:
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-          
